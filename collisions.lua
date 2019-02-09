@@ -26,6 +26,21 @@ function collisions.collide_circles(a,b)
     return vector.length(dist) <= radSum
 end
 
+function collisions.equivalent_lines(a,b)
+    if (not vector.is_parallel(a.angle,b.angle)) then return false end
+
+    local d = a.position - b.position
+    return vector.is_parallel(d,a.angle)
+end
+
+function collisions.collide_lines(a,b)
+    if (vector.is_parallel(a.angle,b.angle)) then
+        return collisions.equivalent_lines(a,b)
+    else
+        return true
+    end
+end
+
 function collisions.run_unit()
 
     print('Collisions Unit Test')
@@ -47,6 +62,22 @@ function collisions.run_unit()
     print(collisions.collide_circles(a,b) == true)
     print(collisions.collide_circles(b,c) == true)
     print(collisions.collide_circles(a,c) == false)
+    print()
+
+    a = vector(3,5)
+    b = vector(3,2)
+    c = vector(8,4)
+    local up = vector(5,-1)
+    local down = vector(5,2)
+    local l1 = shapes.line(a.x,a.y,math.deg(math.atan2(up.y,up.x)))
+    local l2 = shapes.line(a.x,a.y,math.deg(math.atan2(down.x,down.y)))
+    local l3 = shapes.line(b.x,b.y,math.deg(math.atan2(down.x,down.y)))
+    local l4 = shapes.line(c.x,c.y,math.deg(math.atan2(up.y,up.x)))
+    print('Line-Line')
+    print(collisions.collide_lines(l1,l2) == true)
+    print(collisions.collide_lines(l1,l3) == true)
+    print(collisions.collide_lines(l2,l3) == false)
+    print(collisions.collide_lines(l1,l4) == true)
     print()
 
 

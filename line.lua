@@ -3,7 +3,7 @@ local vector = require('vector')
 
 local line = class('line', {
     position = vector(0,0),
-    angle = 0
+    angle = vector(1,0)
 })
 
 function line:init(x,y,degrees)

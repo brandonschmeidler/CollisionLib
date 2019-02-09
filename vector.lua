@@ -90,6 +90,7 @@ function vector.run_unit()
     local vdot = common.equal_floats(vector.dot(vector(8,2),vector(-2,8)), 0)
     local vangle = common.equal_floats(vector.enclosed_angle(vector(8,2), vector(-2,8)), 90)
     local vrot90 = common.equal_floats(vector.enclosed_angle(v1, vector.rotate90(v1)), 90)
+    local vpar = vector.is_parallel(vector.rotate90(vector(8,2)), vector(-2,8))
 
     print('Vector Unit Test')
     print('vadd:' .. tostring(vadd))
@@ -105,6 +106,7 @@ function vector.run_unit()
     print('vdot:' .. tostring(vdot))
     print('vangle:' .. tostring(vangle))
     print('vrot90:' .. tostring(vrot90))
+    print('vpar:' .. tostring(vpar))
     print()
 end
 
