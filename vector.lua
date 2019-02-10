@@ -73,6 +73,21 @@ function vector.is_parallel(a,b)
     return common.equal_floats(0, vector.dot(na,b))
 end
 
+function vector.sort(v)
+    local sorted = vector(v.x,v.y)
+    if (v.x > v.y) then
+        sorted = vector(v.y,v.x)
+    end
+    return sorted
+end
+
+function vector.hull(a,b)
+    local hull = vector(0,0)
+    hull.x = (a.x < b.x) and a.x or b.x
+    hull.y = (a.y > b.y) and a.y or b.y
+    return hull
+end
+
 function vector.run_unit()
     local v1 = vector(20,100)
     local v2 = vector(2,10)
@@ -91,6 +106,7 @@ function vector.run_unit()
     local vangle = common.equal_floats(vector.enclosed_angle(vector(8,2), vector(-2,8)), 90)
     local vrot90 = common.equal_floats(vector.enclosed_angle(v1, vector.rotate90(v1)), 90)
     local vpar = vector.is_parallel(vector.rotate90(vector(8,2)), vector(-2,8))
+    local vsort = vector.sort(vector(8,2)) == vector(2,8)
 
     print('Vector Unit Test')
     print('vadd:' .. tostring(vadd))
@@ -107,6 +123,7 @@ function vector.run_unit()
     print('vangle:' .. tostring(vangle))
     print('vrot90:' .. tostring(vrot90))
     print('vpar:' .. tostring(vpar))
+    print('vsort:' .. tostring(vsort))
     print()
 end
 
