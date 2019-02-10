@@ -1,5 +1,6 @@
 local vector = require('vector')
 local shapes = require('shapes')
+local common = require('common')
 
 local collisions = {}
 
@@ -74,6 +75,13 @@ function collisions.separating_axis_for_oriented_rectangle(axis,r)
     return not collisions.overlapping_ranges(axisRange, rProjection)
 end
 
+function collisions.clamp_on_rectangle(p,r)
+    local clamp = vector(0,0)
+    clamp.x = common.clamp(p.x, r.position.x, r.position.x + r.size.x)
+    clamp.y = common.clamp(p.y, r.position.y, r.position.y + r.size.y)
+    return clamp
+end
+
 function collisions.collide_rects(a,b)
     local al = a.position.x
     local ar = a.position.x + a.size.x
@@ -135,6 +143,48 @@ function collisions.collide_orects(a,b)
     return not collisions.separating_axis_for_oriented_rectangle(edge, a)
 end
 
+function collisions.collide_point_in_circle(x,y,c)
+    local dist = c.position - vector(x,y)
+    return vector.length(dist) <= c.radius
+end
+
+function collisions.collide_circle_line(c,l)
+    local lc = c.position - l.position
+    local p = vector.project(lc, l.angle)
+    local nearest = l.position + p
+    return collisions.collide_point_in_circle(nearest.x,nearest.y,c)
+end
+
+function collisions.collide_circle_segment(c,s)
+    if (collisions.collide_point_in_circle(s.position.x,s.position.y,c)) then return true end
+    local endpoint = s:get_end()
+    if (collisions.collide_point_in_circle(endpoint.x,endpoint.y,c)) then return true end
+
+    local d = endpoint - s.position
+    local lc = c.position - s.position
+    local p = vector.project(lc,d)
+    local nearest = s.position + p
+
+    return collisions.collide_point_in_circle(nearest.x,nearest.y,c) and vector.length(p) <= vector.length(d) and 0 <= vector.dot(p,d)
+end
+
+function collisions.collide_circle_rect(c,r)
+    local clamped = collisions.clamp_on_rectangle(c.position,r)
+    return collisions.collide_point_in_circle(clamped.x,clamped.y,c)
+end
+
+function collisions.collide_circle_orect(c,r)
+    local lr = shapes.rectangle(0,0,0,0)
+    lr.size = r.size
+
+    local lc = shapes.circle(0,0,c.radius)
+    local dist = c.position - r.position
+    dist = vector.rotate(dist, -r.angle)
+    lc.position = dist + vector.scale(r.size, 0.5)
+
+    return collisions.collide_circle_rect(lc,lr)
+end
+
 function collisions.run_unit_rects()
     local a = shapes.rectangle(1,1,4,4)
     local b = shapes.rectangle(2,2,5,5)
@@ -189,7 +239,7 @@ function collisions.run_unit_segments()
     print('Segment-Segment')
     print(collisions.collide_segments(s1,s2) == false)
     print()
-    
+
 end
 
 function collisions.run_unit_orects()
@@ -198,6 +248,58 @@ function collisions.run_unit_orects()
 
     print('ORectangle-ORectangle')
     print(collisions.collide_orects(a,b) == false)
+    print()
+end
+
+function collisions.run_unit_point_in_circle()
+    local c = shapes.circle(6,4,3)
+    local p1 = vector(8,3)
+    local p2 = vector(11,7)
+
+    print('Point - Circle')
+    print(collisions.collide_point_in_circle(p1.x,p1.y,c) == true)
+    print(collisions.collide_point_in_circle(p2.x,p2.y,c) == false)
+    print()
+end
+
+function collisions.run_unit_circle_line()
+    local c = shapes.circle(6,3,2)
+    local l = shapes.line(4,7,0)
+    l.angle = vector(5,-1)
+
+    print('Circle-Line')
+    print(collisions.collide_circle_line(c,l) == false)
+    print()
+
+end
+
+function collisions.run_unit_circle_segment()
+    local c = shapes.circle(4,4,3)
+    local s = shapes.segment(8,6,0,0)
+    s:set_end(13,6)
+
+    print('Circle-Segment')
+    print(collisions.collide_circle_segment(c,s) == false)
+    print()
+end
+
+function collisions.run_unit_circle_rect()
+    local r = shapes.rectangle(3,2,6,4)
+    local c1 = shapes.circle(5,4,1)
+    local c2 = shapes.circle(7,8,1)
+
+    print('Circle-Rect')
+    print(collisions.collide_circle_rect(c1,r) == true)
+    print(collisions.collide_circle_rect(c2,r) == false)
+    print()
+end
+
+function collisions.run_unit_circle_orect()
+    local r = shapes.orectangle(5,4,30,3,2)
+    local c = shapes.circle(5,7,2)
+
+    print('Circle-ORectangle')
+    print(collisions.collide_circle_orect(c,r) == true)
     print()
 end
 
@@ -210,6 +312,11 @@ function collisions.run_unit()
     collisions.run_unit_lines()
     collisions.run_unit_segments()
     collisions.run_unit_orects()
+    collisions.run_unit_point_in_circle()
+    collisions.run_unit_circle_line()
+    collisions.run_unit_circle_segment()
+    collisions.run_unit_circle_rect()
+    collisions.run_unit_circle_orect()
 
 
 end
