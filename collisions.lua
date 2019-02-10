@@ -182,12 +182,12 @@ function collisions.collide_lines(a,b)
 end
 
 function collisions.collide_segments(a,b)
-    local axisA = shapes.line(0,0,0)
+    local axisA = shapes.line(0,0,0,0)
     axisA.position = a.position
     axisA.angle = a:get_end() - a.position
     if (collisions.on_one_side(axisA,b)) then return false end
 
-    local axisB = shapes.line(0,0,0)
+    local axisB = shapes.line(0,0,0,0)
     axisB.position = b.position
     axisB.angle = b:get_end() - b.position
     if (collisions.on_one_side(axisB,a)) then return false end
@@ -215,6 +215,10 @@ function collisions.collide_orects(a,b)
     return not collisions.separating_axis_for_oriented_rectangle(edge, a)
 end
 
+function collisions.collide_points(a,b)
+    return common.equal_floats(a.x,b.x) and common.equal_floats(a.y,b.y)
+end
+
 function collisions.collide_point_in_circle(x,y,c)
     local dist = c.position - vector(x,y)
     return vector.length(dist) <= c.radius
@@ -227,6 +231,29 @@ function collisions.collide_point_in_rect(x,y,r)
     local bottom = r.position.y + r.size.y
 
     return left <= x and top <= y and x <= right and y <= bottom
+end
+
+function collisions.collide_point_in_line(x,y,l)
+    if (collisions.collide_points(vector(x,y),l.position)) then return true end
+    local lp = vector(x,y) - l.position
+    return vector.is_parallel(lp, l.angle)
+end
+
+function collisions.collide_point_in_segment(x,y,s)
+    local d = s:get_end() - s.position
+    local lp = vector(x,y) - s.position
+    local pr = vector.project(lp,d)
+    return lp == pr and vector.length(pr) <= vector.length(d) and 0 <= vector.dot(pr,d)
+end
+
+function collisions.collide_point_in_orect(x,y,r)
+    local lr = shapes.rectangle(0,0,r.size.x,r.size.y)
+
+    local lp = vector(x,y) - r.position
+    lp = vector.rotate(lp, -r.angle)
+    lp = lp + vector.scale(r.size,0.5)
+
+    return collisions.collide_point_in_rect(lp.x,lp.y,lr)
 end
 
 function collisions.collide_circle_line(c,l)
@@ -287,7 +314,7 @@ function collisions.collide_rect_line(r,l)
 end
 
 function collisions.collide_rect_segment(r,s)
-    local sLine = shapes.line(s.position.x,s.position.y,0)
+    local sLine = shapes.line(s.position.x,s.position.y,0,0)
     sLine.angle = s:get_end() - s.position
     if (not collisions.collide_rect_line(r,sLine)) then return false end
 
@@ -312,6 +339,38 @@ function collisions.collide_rect_orect(r,oR)
 
     edge = collisions.oriented_rectangle_edge(oR,1)
     return not collisions.separating_axis_for_rectangle(edge,r)
+end
+
+function collisions.collide_line_segment(l,s)
+    return not collisions.on_one_side(l,s)
+end
+
+function collisions.collide_line_orect(l,r)
+    local lr = shapes.rectangle(0,0,r.size.x,r.size.y)
+    local ll = shapes.line(0,0,0,0)
+    ll.position = l.position - r.position
+    ll.position = vector.rotate(ll.position, -r.angle)
+    ll.position = ll.position + vector.scale(r.size, 0.5)
+    ll.angle = vector.rotate(l.angle, -r.angle)
+
+    return collisions.collide_rect_line(lr,ll)
+end
+
+function collisions.collide_segment_orect(s,r)
+    local lr = shapes.rectangle(0,0,r.size.x,r.size.y)
+
+    local halfSize = vector.scale(r.size,0.5)
+    local ls = shapes.segment(0,0,0,0)
+    ls.position = s.position - r.position
+    ls.position = vector.rotate(ls.position, -r.angle)
+    ls.position = ls.position + halfSize
+
+    local endpoint = s:get_end() - r.position
+    endpoint = vector.rotate(endpoint, -r.angle)
+    endpoint = endpoint + halfSize
+    ls:set_end(endpoint.x,endpoint.y)
+
+    return collisions.collide_rect_segment(lr,ls)
 end
 
 function collisions.run_unit_rects()
@@ -342,10 +401,10 @@ function collisions.run_unit_lines()
     local c = vector(8,4)
     local up = vector(5,-1)
     local down = vector(5,2)
-    local l1 = shapes.line(a.x,a.y,math.deg(math.atan2(up.y,up.x)))
-    local l2 = shapes.line(a.x,a.y,math.deg(math.atan2(down.x,down.y)))
-    local l3 = shapes.line(b.x,b.y,math.deg(math.atan2(down.x,down.y)))
-    local l4 = shapes.line(c.x,c.y,math.deg(math.atan2(up.y,up.x)))
+    local l1 = shapes.line(a.x,a.y,up.x,up.y)
+    local l2 = shapes.line(a.x,a.y,down.x,down.y)
+    local l3 = shapes.line(b.x,b.y,down.x,down.y)
+    local l4 = shapes.line(c.x,c.y,up.x,up.y)
     print('Line-Line')
     print(collisions.collide_lines(l1,l2) == true)
     print(collisions.collide_lines(l1,l3) == true)
@@ -402,10 +461,39 @@ function collisions.run_unit_point_in_rect()
     print()
 end
 
+function collisions.run_unit_point_in_line()
+    local p = vector(5,3)
+    local l = shapes.line(3,7,-7,2)
+
+    print('Point-Line')
+    print(collisions.collide_point_in_line(p.x,p.y,l) == false)
+    print()
+end
+
+function collisions.run_unit_point_in_segment()
+    local p = vector(1,4)
+    local s = shapes.segment(6,6,0,0)
+    s:set_end(13,4)
+
+    print('Point-Segment')
+    print(collisions.collide_point_in_segment(x,y,s) == false)
+    print()
+end
+
+function collisions.run_unit_point_in_orect()
+    local r = shapes.orectangle(5,4,30,6,4)
+    local a = vector(6,5)
+    local b = vector(10,6)
+
+    print('Point-ORectangle')
+    print(collisions.collide_point_in_orect(a.x,a.y,r) == true)
+    print(collisions.collide_point_in_orect(b.x,b.y,r) == false)
+    print()
+end
+
 function collisions.run_unit_circle_line()
     local c = shapes.circle(6,3,2)
-    local l = shapes.line(4,7,0)
-    l.angle = vector(5,-1)
+    local l = shapes.line(4,7,5,-1)
 
     print('Circle-Line')
     print(collisions.collide_circle_line(c,l) == false)
@@ -444,8 +532,7 @@ function collisions.run_unit_circle_orect()
 end
 
 function collisions.run_unit_rect_line()
-    local l = shapes.line(6,8,0)
-    l.angle = vector(2,-3)
+    local l = shapes.line(6,8,2,-3)
     local r = shapes.rectangle(3,2,6,4)
 
     print('Rectangle-Line')
@@ -472,6 +559,39 @@ function collisions.run_unit_rect_orect()
     print()
 end
 
+function collisions.run_unit_line_segment()
+    local s = shapes.segment(8,4,0,0)
+    s:set_end(11,7)
+
+    local l = shapes.line(3,4,4,-2)
+
+    print('Line-Segment')
+    print(collisions.collide_line_segment(l,s) == false)
+    print()
+
+end
+
+function collisions.run_unit_line_orect()
+    local l = shapes.line(7,3,2,-1)
+    local r = shapes.orectangle(5,4,30,6,4)
+
+    print('Line-ORectangle')
+    print(collisions.collide_line_orect(l,r) == true)
+    print()
+
+end
+
+function collisions.run_unit_segment_orect()
+    local s = shapes.segment(1,8,0,0)
+    s:set_end(7,5)
+
+    local r = shapes.orectangle(5,4,30,6,4)
+
+    print('Segment-ORectangle')
+    print(collisions.collide_segment_orect(s,r) == true)
+    print()
+end
+
 function collisions.run_unit()
 
     print('Collisions Unit Test')
@@ -483,6 +603,9 @@ function collisions.run_unit()
     collisions.run_unit_orects()
     collisions.run_unit_point_in_circle()
     collisions.run_unit_point_in_rect()
+    collisions.run_unit_point_in_line()
+    collisions.run_unit_point_in_segment()
+    collisions.run_unit_point_in_orect()
     collisions.run_unit_circle_line()
     collisions.run_unit_circle_segment()
     collisions.run_unit_circle_rect()
@@ -490,6 +613,9 @@ function collisions.run_unit()
     collisions.run_unit_rect_line()
     collisions.run_unit_rect_segment()
     collisions.run_unit_rect_orect()
+    collisions.run_unit_line_segment()
+    collisions.run_unit_line_orect()
+    collisions.run_unit_segment_orect()
 
 
 end

@@ -6,14 +6,23 @@ local line = class('line', {
     angle = vector(1,0)
 })
 
-function line:init(x,y,degrees)
+function line:init(x,y,ax,ay)
     self.position = vector(x,y)
-    self:set_angle(degrees)
+
+    if (ay ~= nil) then
+        self.angle = vector(ax,ay)
+    else
+        self:set_angle(ax)
+    end
 end
 
 function line:set_angle(degrees)
     local r = math.rad(degrees)
     self.angle = vector(math.cos(r), math.sin(r))
+end
+
+function line:get_angle()
+    return math.deg(math.atan2(self.angle.y,self.angle.x))
 end
 
 function line:draw()
